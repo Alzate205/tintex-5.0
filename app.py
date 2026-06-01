@@ -3,7 +3,8 @@ import sys
 import shutil  # Añadir shutil para copiar archivos
 from flask import Flask, send_from_directory, g, request, jsonify, send_file
 from flask_cors import CORS
-import pandas as pd
+import xlsxwriter
+from werkzeug.security import check_password_hash, generate_password_hash
 import jwt
 from functools import wraps
 from datetime import datetime, timedelta
@@ -91,7 +92,6 @@ def token_required(f):
         if 'Authorization' in request.headers:
             try:
                 token = request.headers['Authorization'].split(" ")[1]
-                print(f"Token recibido: {token}")
             except IndexError:
                 print("Formato de Authorization inválido")
                 return jsonify({'error': 'Formato de Authorization inválido, se esperaba "Bearer <token>"'}), 401
@@ -106,7 +106,6 @@ def token_required(f):
             if not current_user:
                 print("Estructura de token inválida: falta el campo 'user'")
                 return jsonify({'error': 'Estructura de token inválida: falta el campo "user"'}), 401
-            print(f"Usuario autenticado: {current_user}")
         except jwt.ExpiredSignatureError:
             print("Token expirado")
             return jsonify({'error': 'Token expirado'}), 401
@@ -135,11 +134,10 @@ def login():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        print(f"Consultando usuario: {nombre}")
         cursor.execute('SELECT id_usuario, nombre, contrasena, rol, email FROM usuarios WHERE nombre = ?', (nombre,))
         user = cursor.fetchone()
         
-        if user and user['contrasena'] == contrasena:
+        if user and check_password_hash(user['contrasena'], contrasena):
             user_dict = {
                 'id': user['id_usuario'],
                 'nombre': user['nombre'],
@@ -150,7 +148,6 @@ def login():
                 'user': user_dict,
                 'exp': datetime.utcnow() + timedelta(days=365)
             }, app.config['SECRET_KEY'], algorithm='HS256')
-            print(f"Token generado para {nombre}: {token}")
             return jsonify({'user': user_dict, 'token': token})
         else:
             print(f"Credenciales inválidas para usuario: {nombre}")
@@ -243,9 +240,7 @@ def add_producto(current_user):
 @token_required
 def update_producto(current_user, id):
     try:
-        print(f"Usuario autenticado: {current_user}")
         data = request.get_json()
-        print(f"Datos recibidos del frontend: {data}")
 
         field_mapping = {
             'nombre': 'nombre',
@@ -1418,31 +1413,27 @@ def export_reporte():
                     'Es Inflamable': 'Sí' if item[13] else 'No'  # es_inflamable
                 })
             
-            # Crear DataFrame
-            df = pd.DataFrame(data)
-            
-            # Crear un archivo Excel en memoria
+            # Crear un archivo Excel en memoria con xlsxwriter (sin pandas)
             output = BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                df.to_excel(writer, index=False, sheet_name='Inventario')
-                
-                # Obtener el libro y la hoja
-                workbook = writer.book
-                worksheet = writer.sheets['Inventario']
-                
-                # Formato para encabezados
-                header_format = workbook.add_format({
-                    'bold': True,
-                    'text_wrap': True,
-                    'valign': 'top',
-                    'fg_color': '#D7E4BC',
-                    'border': 1
-                })
-                
-                # Aplicar formato a los encabezados
-                for col_num, value in enumerate(df.columns.values):
-                    worksheet.write(0, col_num, value, header_format)
-                    worksheet.set_column(col_num, col_num, 15)  # Ajustar ancho de columna
+            workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+            worksheet = workbook.add_worksheet('Inventario')
+
+            header_format = workbook.add_format({
+                'bold': True,
+                'text_wrap': True,
+                'valign': 'top',
+                'fg_color': '#D7E4BC',
+                'border': 1
+            })
+
+            columnas = list(data[0].keys()) if data else []
+            for col_num, value in enumerate(columnas):
+                worksheet.write(0, col_num, value, header_format)
+                worksheet.set_column(col_num, col_num, 15)
+            for fila, item in enumerate(data, start=1):
+                for col_num, value in enumerate(columnas):
+                    worksheet.write(fila, col_num, item.get(value))
+            workbook.close()
             
             output.seek(0)
             
@@ -1818,9 +1809,8 @@ def add_usuario(current_user):
         if cursor.fetchone():
             return jsonify({'error': 'El nombre de usuario ya existe'}), 400
 
-        # Guardar la contraseña en texto plano
-        cursor.execute('INSERT INTO usuarios (nombre, contrasena, rol) VALUES (?, ?, ?)', 
-                       (nombre, contrasena, rol))
+        cursor.execute('INSERT INTO usuarios (nombre, contrasena, rol) VALUES (?, ?, ?)',
+                       (nombre, generate_password_hash(contrasena), rol))
         conn.commit()
         return jsonify({'message': 'Usuario creado correctamente'})
     except Exception as e:

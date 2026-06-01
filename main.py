@@ -5,6 +5,7 @@ import threading
 import time
 import base64
 import os
+import urllib.request
 
 # Importa la instancia 'app' de Flask desde tu archivo app.py
 try:
@@ -47,6 +48,18 @@ class Api:
             print(f"Error al guardar archivo: {e}")
             return False
 
+
+def _esperar_servidor(url='http://127.0.0.1:5000', intentos=50):
+    """Espera a que el servidor Flask responda antes de abrir la ventana."""
+    for _ in range(intentos):
+        try:
+            urllib.request.urlopen(url, timeout=0.3)
+            return True
+        except Exception:
+            time.sleep(0.1)
+    return False
+
+
 if __name__ == '__main__':
     try:
         # Inicia el servidor Flask en un hilo separado
@@ -62,8 +75,8 @@ if __name__ == '__main__':
         flask_thread.daemon = True
         flask_thread.start()
 
-        # Espera un momento para asegurarte de que Flask esté listo
-        time.sleep(2)
+        # Esperar a que Flask responda (arranque más ágil que un sleep fijo)
+        _esperar_servidor()
 
         # Crear la ventana de la aplicación
         print("Iniciando Pywebview...")

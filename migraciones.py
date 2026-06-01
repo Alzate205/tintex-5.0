@@ -43,4 +43,11 @@ def aplicar_migraciones(conn):
         )
     """)
 
+    # 4) hashear contraseñas en texto plano (idempotente: salta las ya hasheadas)
+    from werkzeug.security import generate_password_hash
+    for uid, pwd in conn.execute("SELECT id_usuario, contrasena FROM usuarios").fetchall():
+        if pwd and not str(pwd).startswith(("pbkdf2:", "scrypt:")):
+            conn.execute("UPDATE usuarios SET contrasena = ? WHERE id_usuario = ?",
+                         (generate_password_hash(pwd), uid))
+
     conn.commit()
