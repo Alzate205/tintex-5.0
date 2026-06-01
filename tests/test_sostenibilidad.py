@@ -117,3 +117,15 @@ def test_prediccion_con_historial(conn):
     # Suavizado exponencial alpha=0.5 sobre [10,20,30] => 22.5
     assert pred["proyeccion"] == 22.5
     assert pred["historial"] == 3
+
+
+def test_graficas_estructura_y_alertas(conn):
+    import seed_demo
+    seed_demo.sembrar(conn)
+    g = s.compute_graficas(conn)
+    pv = g["peligrosos_vs_seguros"]
+    assert pv["seguros"] + pv["corrosivos"] + pv["toxicos_inflamables"] >= 1
+    assert isinstance(g["top_quimicos"], list) and len(g["top_quimicos"]) >= 1
+    assert isinstance(g["consumo_por_lote"], list) and len(g["consumo_por_lote"]) >= 1
+    # con seed_demo hay sobredosis -> al menos una alerta de ese tipo
+    assert any(a["tipo"] == "sobredosis" for a in g["alertas"])

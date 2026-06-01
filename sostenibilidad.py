@@ -195,3 +195,71 @@ def predecir_consumo(conn, id_producto, ventana=6, alpha=0.5):
     confianza = "alta" if len(serie) >= 4 else ("media" if len(serie) >= 2 else "baja")
     return {"id_producto": id_producto, "proyeccion": round(s_val, 2),
             "confianza": confianza, "historial": len(serie)}
+
+
+def compute_alertas(conn):
+    """Alertas activas: bajo stock, sobredosis por lote, productos sin coeficiente."""
+    conn.row_factory = sqlite3.Row
+    alertas = []
+    for r in conn.execute(
+        "SELECT nombre, cantidad, stock_minimo FROM productos "
+        "WHERE estado_verificacion = 'Verificado' AND cantidad < stock_minimo"
+    ).fetchall():
+        alertas.append({"tipo": "bajo_stock",
+                        "mensaje": f"{r['nombre']} — bajo stock ({r['cantidad']} / mín {r['stock_minimo']})"})
+
+    for (id_lote,) in conn.execute("SELECT id_lote FROM lotes WHERE peso_tela_kg > 0").fetchall():
+        rep = compute_lote_optimizacion(conn, id_lote)
+        sobre = [d for d in rep["detalle"] if d["estado"] == "sobredosis"]
+        if sobre:
+            alertas.append({"tipo": "sobredosis",
+                            "mensaje": f"{rep['numero_lote']} — {len(sobre)} sobredosis detectada(s)"})
+
+    for r in conn.execute(
+        "SELECT DISTINCT p.nombre FROM etapas_productos ep "
+        "JOIN productos p ON p.id_producto = ep.id_producto "
+        "LEFT JOIN factores_ambientales f ON f.id_producto = ep.id_producto "
+        "WHERE f.id_factor IS NULL"
+    ).fetchall():
+        alertas.append({"tipo": "sin_coeficiente",
+                        "mensaje": f"{r['nombre']} — sin coeficiente ambiental cargado"})
+    return alertas
+
+
+def compute_graficas(conn):
+    """Series para las gráficas del panel: peligrosidad, top químicos, consumo por lote, alertas."""
+    conn.row_factory = sqlite3.Row
+    total = conn.execute(
+        "SELECT COUNT(*) AS c FROM productos WHERE estado_verificacion = 'Verificado'"
+    ).fetchone()["c"]
+    corrosivos = conn.execute(
+        "SELECT COUNT(*) AS c FROM productos WHERE estado_verificacion = 'Verificado' "
+        "AND es_corrosivo = 1 AND es_toxico = 0 AND es_inflamable = 0"
+    ).fetchone()["c"]
+    tox_inf = conn.execute(
+        "SELECT COUNT(*) AS c FROM productos WHERE estado_verificacion = 'Verificado' "
+        "AND (es_toxico = 1 OR es_inflamable = 1)"
+    ).fetchone()["c"]
+    seguros = total - corrosivos - tox_inf
+
+    top = conn.execute(
+        "SELECT p.nombre AS nombre, SUM(ep.cantidad_usada) AS total "
+        "FROM etapas_productos ep JOIN productos p ON p.id_producto = ep.id_producto "
+        "GROUP BY ep.id_producto ORDER BY total DESC LIMIT 5"
+    ).fetchall()
+
+    por_lote = conn.execute(
+        "SELECT l.numero_lote AS lote, SUM(ep.cantidad_usada) AS total "
+        "FROM lotes l JOIN etapas_lotes el ON el.id_lote = l.id_lote "
+        "JOIN etapas_productos ep ON ep.id_etapa_lote = el.id_etapa_lote "
+        "GROUP BY l.id_lote ORDER BY l.id_lote"
+    ).fetchall()
+
+    return {
+        "peligrosos_vs_seguros": {
+            "seguros": seguros, "corrosivos": corrosivos, "toxicos_inflamables": tox_inf,
+        },
+        "top_quimicos": [{"nombre": r["nombre"], "total": float(r["total"] or 0)} for r in top],
+        "consumo_por_lote": [{"lote": r["lote"], "total": float(r["total"] or 0)} for r in por_lote],
+        "alertas": compute_alertas(conn),
+    }

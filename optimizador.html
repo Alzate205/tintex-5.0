@@ -57,6 +57,14 @@
                 <p class="eco-note">Dosis real = cantidad usada ÷ peso de tela. Agua/CO₂ son estimaciones según coeficientes configurables.</p>
             </div>
 
+            <div class="eco-card" id="recomendacionCard" style="display:none">
+                <h4>Recomendación — mayor sobredosis del lote</h4>
+                <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:18px;align-items:center">
+                    <canvas id="antesDespuesChart" height="160"></canvas>
+                    <div id="recomendacionTexto"></div>
+                </div>
+            </div>
+
             <div class="eco-card">
                 <h4>Acumulado global de planta</h4>
                 <canvas id="acumuladoChart" height="90"></canvas>

@@ -16,6 +16,45 @@
             <div class="kpi-card"><h3>CO₂ evitado 🌍</h3><div class="val">${fmt(k.co2_evitado_kg,1)} kg</div><div class="sub">estimación</div></div>`;
     }
 
+    async function cargarGraficas() {
+        const g = await fetch(`${BASE_URL}/api/sostenibilidad/graficas`, { headers }).then(r => r.json());
+
+        new Chart(document.getElementById('consumoChart'), {
+            type: 'bar',
+            data: {
+                labels: g.consumo_por_lote.map(x => x.lote),
+                datasets: [{ data: g.consumo_por_lote.map(x => x.total), backgroundColor: '#0b7a4f' }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+
+        const pv = g.peligrosos_vs_seguros;
+        new Chart(document.getElementById('donutChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Seguros', 'Corrosivos', 'Tóxicos/Inflamables'],
+                datasets: [{ data: [pv.seguros, pv.corrosivos, pv.toxicos_inflamables],
+                    backgroundColor: ['#1f9d6b', '#e67e22', '#c0392b'] }]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+        });
+
+        new Chart(document.getElementById('topChart'), {
+            type: 'bar',
+            data: {
+                labels: g.top_quimicos.map(x => x.nombre),
+                datasets: [{ data: g.top_quimicos.map(x => x.total), backgroundColor: '#13a06f' }]
+            },
+            options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } }
+        });
+
+        const icono = { bajo_stock: '🔴', sobredosis: '🟠', sin_coeficiente: '⚪' };
+        const box = document.getElementById('alertasBox');
+        box.innerHTML = g.alertas.length
+            ? g.alertas.map(a => `<div style="padding:8px 10px;margin-bottom:6px;border-radius:8px;background:#f7faf8;font-size:.82rem">${icono[a.tipo] || '•'} ${a.mensaje}</div>`).join('')
+            : '<p class="eco-note">Sin alertas activas.</p>';
+    }
+
     async function cargarPrediccion() {
         const items = await fetch(`${BASE_URL}/api/prediccion/consumo`, { headers }).then(r => r.json());
         const conHistorial = items.filter(p => p.historial > 0);
@@ -31,5 +70,6 @@
     }
 
     cargarKpis();
+    cargarGraficas();
     cargarPrediccion();
 })();

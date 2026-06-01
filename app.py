@@ -1983,6 +1983,17 @@ def api_sostenibilidad_kpis(current_user):
         return jsonify({'error': 'No se pudieron calcular los KPIs'}), 500
 
 
+@app.route('/api/sostenibilidad/graficas', methods=['GET'])
+@token_required
+def api_sostenibilidad_graficas(current_user):
+    try:
+        conn = get_db_connection()
+        return jsonify(sostenibilidad.compute_graficas(conn))
+    except Exception as e:
+        print(f"Error en graficas: {e}")
+        return jsonify({'error': 'No se pudieron calcular las graficas'}), 500
+
+
 @app.route('/api/prediccion/consumo', methods=['GET'])
 @token_required
 def api_prediccion_consumo(current_user):

@@ -18,6 +18,7 @@
         cargarAcumulado();
     }
 
+    let baChart;
     async function cargarLote(idLote) {
         const data = await fetch(`${BASE_URL}/api/optimizador/lote/${idLote}`, { headers }).then(r => r.json());
         document.getElementById('pesoTela').textContent = `Peso de tela: ${fmt(data.peso_tela_kg)} kg`;
@@ -35,6 +36,33 @@
                 <td>${d.excedente_kg ? fmt(d.excedente_kg) + ' kg' : '—'}</td>
                 <td><span class="badge-estado ${badgeClass[d.estado]}">${badgeText[d.estado]}</span></td>
             </tr>`).join('');
+
+        // Recomendación: la mayor sobredosis del lote (antes / después)
+        const sobre = data.detalle.filter(d => d.estado === 'sobredosis');
+        const card = document.getElementById('recomendacionCard');
+        if (sobre.length) {
+            sobre.sort((a, b) => b.desviacion_pct - a.desviacion_pct);
+            const w = sobre[0];
+            card.style.display = 'block';
+            document.getElementById('recomendacionTexto').innerHTML =
+                `💡 <strong>${w.producto}</strong> en <strong>${w.etapa}</strong>: reduce de ` +
+                `<strong>${fmt(w.dosis_real_g_kg)} g/kg</strong> a <strong>${fmt(w.dosis_ref_g_kg)} g/kg</strong> ` +
+                `(desviación ${fmt(w.desviacion_pct, 1)}%).<br>Ahorro por lote: <strong>${fmt(w.excedente_kg)} kg</strong> de químico` +
+                (w.agua_evitable_l ? `, ≈${fmt(w.agua_evitable_l)} L de agua` : '') +
+                (w.co2_evitable_kg ? ` y ${fmt(w.co2_evitable_kg)} kg CO₂` : '') + ` evitados.`;
+            if (baChart) baChart.destroy();
+            baChart = new Chart(document.getElementById('antesDespuesChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Dosis actual', 'Dosis óptima'],
+                    datasets: [{ label: 'g/kg', data: [w.dosis_real_g_kg, w.dosis_ref_g_kg],
+                        backgroundColor: ['#c0392b', '#0b7a4f'] }]
+                },
+                options: { responsive: true, plugins: { legend: { display: false } } }
+            });
+        } else {
+            card.style.display = 'none';
+        }
     }
 
     let chart;
