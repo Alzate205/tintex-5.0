@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes Avanzados - Sistema de Inventario</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">GYH</div>
+            <div class="menu-toggle"><i class="fas fa-bars"></i></div>
+            <div class="user-profile">
+                <span id="loggedInUser"></span>
+                <a href="#" class="logout" id="logoutBtn">Cerrar sesión</a>
+            </div>
+        </header>
+
+        <nav class="nav">
+            <ul>
+                <li><a href="dashboard.html" id="dashboardLink">Inventario</a></li>
+                <li><a href="procesos.html" id="prototypeLink">Prototipos</a></li>
+                <li><a href="reportes.html" id="reportLink" class="active">Reportes</a></li>
+                <li><a href="proveedores.html" id="proveedoresLink">Proveedores</a></li>
+            </ul>
+        </nav>
+
+        <main class="content">
+            <div class="button-group">
+                
+                <button id="exportExcelBtn" class="action-btn export-btn"><i class="fas fa-file-excel"></i> Exportar a Excel</button>
+            </div>
+        
+            <!-- Contenedor del Reporte -->
+            <div id="reportContainer">
+                <!-- Encabezado del Reporte -->
+                <div class="report-header">
+                    <h1>Reporte Avanzado de Inventario</h1>
+                    <p>Generado el: <span id="reportDate"></span></p>
+                    <p>Usuario: <span id="reportUser"></span></p>
+                </div>
+        
+                <!-- Resumen del Inventario -->
+                <section class="report-section">
+                    <h2>Resumen del Inventario</h2>
+        
+                    <div class="summary-cards">
+                        <div class="summary-card">
+                            <h3>Total de Productos</h3>
+                            <p id="totalProductos">0</p>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Valor Total (Pesos)</h3>
+                            <p id="valorTotal">$0.00</p>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Productos Bajo Stock</h3>
+                            <p id="bajoStockCount">0</p>
+                        </div>
+                    </div>
+        
+                    <h3>Productos por Debajo del Stock Mínimo</h3>
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Cantidad</th>
+                                <th>Stock Mínimo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bajoStockTable"></tbody>
+                    </table>
+        
+                    <h3>Productos con Características Especiales</h3>
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Tóxico</th>
+                                <th>Corrosivo</th>
+                                <th>Inflamable</th>
+                            </tr>
+                        </thead>
+                        <tbody id="especialesTable"></tbody>
+                    </table>
+        
+                    <h3>Productos con Más Stock</h3>
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Cantidad</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productosMasStockTable"></tbody>
+                    </table>
+                </section>
+        
+            </div>
+        
+            <footer class="footer">
+                <p>Reporte Avanzado de Inventario - Generado el <span id="footerDate"></span></p>
+            </footer>
+        </main>        
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

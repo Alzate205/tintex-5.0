@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Sistema de Inventario</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">GYH</div>
+            <div class="menu-toggle"><i class="fas fa-bars"></i></div>
+            <div class="user-profile">
+                <span id="loggedInUser"></span>
+                <a href="#" class="logout" id="logoutBtn">Cerrar sesión</a>
+            </div>
+        </header>
+
+        <nav class="nav">
+            <ul>
+                <li><a href="dashboard.html" id="dashboardLink" class="active">Inventario</a></li>
+                <li><a href="procesos.html" id="prototypeLink">Prototipos</a></li>
+                <li><a href="reportes.html" id="reportLink">Reportes</a></li>
+                <li><a href="proveedores.html" id="proveedoresLink">Proveedores</a></li>
+            </ul>
+        </nav>
+
+        <main class="content">
+            <div id="loading" style="display: none;">Cargando...</div>
+            
+            <!-- Migas de pan -->
+            <nav class="breadcrumbs">
+                <a href="dashboard.html">Inventario</a> 
+                <span>></span> 
+                <span id="currentSection">Dashboard</span>
+            </nav>
+        
+            <!-- Contenedor para buscador y botones alineados -->
+            <div class="controls-container" id="controlsContainer">
+                <div class="search-container">
+                    <input type="text" id="searchInput" placeholder="Buscar por nombre..." />
+                    <button id="clearSearchBtn" style="display: none;"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="button-group">
+                    <button id="addTipoBtn" class="nav-btn">Agregar Tipo</button>
+                    <button id="filterBtn" class="nav-btn"><i class="fas fa-filter"></i> Filtrar</button>
+                    <button id="addProductBtn" class="add-btn">Agregar Producto</button>
+                </div>
+            </div>
+            <div id="inventory-table" class="inventory-grid"></div>
+        
+            <section id="checklist-section" class="hidden">
+                <h2>Checklist para Verificación (Bodeguero)</h2>
+                <div id="checklist-body" class="inventory-grid"></div>
+            </section>
+        
+            <section id="report-section" class="hidden">
+                <h2>Reportes</h2>
+                <button id="generateReportBtn" class="action-btn generate-btn">Generar Reporte</button>
+                <div id="report-output"></div>
+            </section>
+        
+            <section id="admin-section" class="hidden">
+                <h2>Gestión de Proveedores</h2>
+                <button id="addProveedorBtn" class="action-btn add-btn">Agregar Proveedor</button>
+                <div id="proveedores-table" class="inventory-grid"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal para Agregar Productos -->
+    <div id="modalOverlay" class="modal-overlay">
+        <div class="modal">
+            <h2 id="modalTitle">Agregar Producto</h2>
+            <form id="productForm">
+                <label for="productName">Nombre:</label>
+                <input type="text" id="productName" required>
+
+                <label for="productQuantity">Cantidad:</label>
+                <input type="number" id="productQuantity" step="0.01" required>
+
+                <label for="productType">Tipo:</label>
+                <select id="productType" required></select>
+
+                <label for="productUnit">Unidad:</label>
+                <select id="productUnit" required>
+                    <option value="1">Gramos (g)</option>
+                    <option value="2">Mililitros (ml)</option>
+                    <option value="3">Kilogramos (kg)</option>
+                    <option value="4">Litros (L)</option>
+                </select>
+
+                <label for="productStockMin">Stock Mínimo:</label>
+                <input type="number" id="productStockMin" step="0.01" required>
+
+                <label for="productStockMax">Stock Máximo:</label>
+                <input type="number" id="productStockMax" step="0.01" required>
+
+                <label for="productPrice">Precio:</label>
+                <input type="number" id="productPrice" step="0.01" required>
+
+                <label for="productState">Estado de Verificación:</label>
+                <select id="productState">
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="Verificado">Verificado</option>
+                </select>
+
+                <label for="productProvider">Proveedor:</label>
+                <select id="productProvider" required></select>
+
+                <!-- Checklist para propiedades -->
+                <label>Propiedades del Producto:</label>
+                <div class="form-group">
+                    <input type="checkbox" id="isToxic" name="properties">
+                    <label for="isToxic">Tóxico</label>
+                    <input type="checkbox" id="isCorrosive" name="properties">
+                    <label for="isCorrosive">Corrosivo</label>
+                    <input type="checkbox" id="isFlammable" name="properties">
+                    <label for="isFlammable">Inflamable</label>
+                </div>
+
+                <button type="submit">Guardar</button>
+                <button type="button" id="closeModalBtn">Cerrar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Editar Productos -->
+    <div id="editProductModalOverlay" class="modal-overlay">
+        <div class="modal">
+            <h2>Editar Producto</h2>
+            <form id="editProductForm">
+                <input type="hidden" id="editProductId">
+                <label for="editProductName">Nombre:</label>
+                <input type="text" id="editProductName" required>
+
+                <label for="editProductQuantity">Cantidad:</label>
+                <input type="number" id="editProductQuantity" step="0.01" required>
+
+                <label for="editProductType">Tipo:</label>
+                <select id="editProductType" required></select>
+
+                <label for="editProductUnit">Unidad:</label>
+                <select id="editProductUnit" required>
+                    <option value="1">Gramos (g)</option>
+                    <option value="2">Mililitros (ml)</option>
+                    <option value="3">Kilogramos (kg)</option>
+                    <option value="4">Litros (L)</option>
+                </select>
+
+                <label for="editProductStockMin">Stock Mínimo:</label>
+                <input type="number" id="editProductStockMin" step="0.01" required>
+
+                <label for="editProductStockMax">Stock Máximo:</label>
+                <input type="number" id="editProductStockMax" step="0.01" required>
+
+                <label for="editProductPrice">Precio:</label>
+                <input type="number" id="editProductPrice" step="0.01" required>
+
+                <label for="editProductState">Estado de Verificación:</label>
+                <select id="editProductState">
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="Verificado">Verificado</option>
+                </select>
+
+                <label for="editProductProvider">Proveedor:</label>
+                <select id="editProductProvider" required></select>
+
+                <label for="editProductLote">Lote:</label>
+                <input type="text" id="editProductLote">
+
+                <!-- Checklist para propiedades -->
+                <label>Propiedades del Producto:</label>
+                <div class="form-group">
+                    <input type="checkbox" id="editProductEsToxico" name="editProperties">
+                    <label for="editProductEsToxico">Tóxico</label>
+                    <input type="checkbox" id="editProductEsCorrosivo" name="editProperties">
+                    <label for="editProductEsCorrosivo">Corrosivo</label>
+                    <input type="checkbox" id="editProductEsInflamable" name="editProperties">
+                    <label for="editProductEsInflamable">Inflamable</label>
+                </div>
+
+                <button type="submit">Guardar Cambios</button>
+                <button type="button" id="closeEditModalBtn">Cerrar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Filtros -->
+    <div id="filterModalOverlay" class="modal-overlay">
+        <div class="modal">
+            <h2>Filtrar Productos</h2>
+            <form id="filterForm">
+                <div class="form-group">
+                    <label for="filterType">Tipo:</label>
+                    <select id="filterType">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <button type="submit" id="applyFilterBtn">Aplicar</button>
+                <button type="button" id="closeFilterModalBtn">Cerrar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Proveedores -->
+    <div id="proveedorModalOverlay" class="modal-overlay">
+        <div class="modal">
+            <h2 id="proveedorModalTitle">Agregar Proveedor</h2>
+            <form id="proveedorForm">
+                <div class="form-group">
+                    <label for="proveedorNombre">Nombre:</label>
+                    <input type="text" id="proveedorNombre" required>
+                </div>
+                <div class="form-group">
+                    <label for="proveedorContacto">Contacto:</label>
+                    <input type="text" id="proveedorContacto" required>
+                </div>
+                <div class="form-group">
+                    <label for="proveedorTelefono">Teléfono:</label>
+                    <input type="text" id="proveedorTelefono" required>
+                </div>
+                <div class="form-group">
+                    <label for="proveedorEmail">Email:</label>
+                    <input type="email" id="proveedorEmail" required>
+                </div>
+                <button type="submit" id="saveProveedorBtn">Guardar</button>
+                <button type="button" id="closeProveedorModalBtn">Cerrar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Agregar Tipo -->
+    <div id="tipoModalOverlay" class="modal-overlay">
+        <div class="modal">
+            <h2 id="tipoModalTitle">Agregar Tipo de Producto</h2>
+            <form id="tipoForm">
+                <div class="form-group">
+                    <label for="tipoNombre">Nombre:</label>
+                    <input type="text" id="tipoNombre" required>
+                </div>
+                <button type="submit">Guardar</button>
+                <button type="button" id="closeTipoModalBtn">Cerrar</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

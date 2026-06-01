@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proveedores - Sistema de Inventario</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">GYH</div>
+            <div class="menu-toggle"><i class="fas fa-bars"></i></div>
+            <div class="user-profile">
+                <span id="loggedInUser"></span>
+                <a href="#" class="logout" id="logoutBtn">Cerrar sesión</a>
+            </div>
+        </header>
+
+        <nav class="nav">
+            <ul>
+                <li><a href="dashboard.html" id="dashboardLink">Inventario</a></li>
+                <li><a href="procesos.html" id="prototypeLink">Prototipos</a></li>
+                <li><a href="reportes.html" id="reportLink">Reportes</a></li>
+                <li><a href="proveedores.html" id="proveedoresLink" class="active">Proveedores</a></li>
+            </ul>
+        </nav>
+
+        <main class="content">
+            <nav class="breadcrumbs">
+                <a href="proveedores.html">Proveedores</a> 
+                <span>></span> 
+                <span id="currentSection">Gestión de Proveedores</span>
+            </nav>
+
+            <div id="loading" class="loading-spinner">Cargando...</div>
+            <section id="proveedores-section">
+                <div class="section-header">
+                    <h2>Gestión de Proveedores</h2>
+                    <div class="section-controls">
+                        <div class="search-bar">
+                            <input type="text" id="searchProveedor" placeholder="Buscar proveedor...">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <button id="addProveedorBtn" class="action-btn add-btn">
+                            <i class="fas fa-plus"></i> Agregar Proveedor
+                        </button>
+                    </div>
+                </div>
+                <div id="proveedores-grid" class="proveedores-grid"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal para Proveedores -->
+    <div id="proveedorModalOverlay" class="modal-overlay">
+        <div class="modal">
+            <h2 id="proveedorModalTitle">Agregar Proveedor</h2>
+            <form id="proveedorForm">
+                <div class="form-group">
+                    <label for="proveedorNombre">Nombre:</label>
+                    <input type="text" id="proveedorNombre" required>
+                </div>
+                <div class="form-group">
+                    <label for="proveedorContacto">Contacto:</label>
+                    <input type="text" id="proveedorContacto" required>
+                </div>
+                <div class="form-group">
+                    <label for="proveedorTelefono">Teléfono:</label>
+                    <input type="text" id="proveedorTelefono" required>
+                </div>
+                <div class="form-group">
+                    <label for="proveedorEmail">Email:</label>
+                    <input type="email" id="proveedorEmail" required>
+                </div>
+                <div class="modal-buttons">
+                    <button type="submit" id="saveProveedorBtn" class="btn btn-primary">Guardar</button>
+                    <button type="button" id="closeProveedorModalBtn" class="btn btn-secondary">Cerrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js" defer></script>
+</body>
+</html>

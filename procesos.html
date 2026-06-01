@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prototipos - Sistema de Inventario</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">GYH</div>
+            <div class="menu-toggle"><i class="fas fa-bars"></i></div>
+            <div class="user-profile">
+                <span id="loggedInUser"></span>
+                <a href="#" class="logout" id="logoutBtn">Cerrar sesión</a>
+            </div>
+        </header>
+
+        <nav class="nav">
+            <ul>
+                <li><a href="dashboard.html" id="dashboardLink" >Inventario</a></li>
+                <li><a href="procesos.html" id="prototypeLink" class="active">Prototipos</a></li>
+                <li><a href="reportes.html" id="reportLink">Reportes</a></li>
+                <li><a href="proveedores.html" id="proveedoresLink">Proveedores</a></li>
+            </ul>
+        </nav>
+
+        <main class="content">
+            <nav class="breadcrumbs">
+                <a href="prototipos.html">Prototipos</a> 
+                <span>></span> 
+                <span id="currentSection">Lista de Prototipos</span>
+            </nav>
+
+            <div class="controls-container">
+                <div class="search-container">
+                    <input type="text" id="searchInput" placeholder="Buscar por nombre..." />
+                    <button id="clearSearchBtn" style="display: none;"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="button-group">
+                    <button id="addPrototypeBtn" class="add-btn">Crear Nuevo Prototipo</button>
+                </div>
+            </div>
+
+            <div id="prototypes-table" class="inventory-grid"></div>
+        </main>
+    </div>
+
+    <!-- Modal para agregar/editar prototipo -->
+    <div id="prototypeModalOverlay" class="modal-overlay">
+        <div class="modal">
+            <h2 id="prototypeModalTitle">Crear Nuevo Prototipo</h2>
+            <form id="prototypeForm">
+                <div class="form-group">
+                    <label for="prototypeName">Nombre del Prototipo:</label>
+                    <input type="text" id="prototypeName" required>
+                </div>
+                <div class="form-group">
+                    <label for="responsible">Responsable:</label>
+                    <input type="text" id="responsible" required>
+                </div>
+                <div class="form-group">
+                    <label for="notes">Notas:</label>
+                    <textarea id="notes" rows="3"></textarea>
+                </div>
+                <div id="stagesContainer"></div>
+                <button type="button" id="addStageBtn" class="add-etapa-btn">Agregar Etapa</button>
+                <div class="form-group">
+                    <label for="prototypeState">Estado:</label>
+                    <select id="prototypeState" required>
+                        <option value="">Selecciona un estado</option>
+                        <option value="En espera">En espera</option>
+                        <option value="Aprobado">Aprobado</option>
+                        <option value="Rechazado">Rechazado</option>
+                    </select>
+                </div>
+                <button type="submit" id="savePrototypeBtn">Guardar</button>
+                <button type="button" id="closePrototypeModalBtn">Cerrar</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js" defer></script>
+</body>
+</html>

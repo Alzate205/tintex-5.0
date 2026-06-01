@@ -1,0 +1,35 @@
+# === Artefactos de build (PyInstaller) — esto era el peso de 6 GB ===
+build/
+dist/
+*.manifest
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# === Entornos virtuales ===
+venv/
+.venv/
+env/
+ENV/
+
+# === Sistema operativo / editores ===
+.DS_Store
+Thumbs.db
+.idea/
+
+# === Logs y temporales ===
+*.log
+*.tmp
+
+# === Variables de entorno (no versionar secretos) ===
+.env
+.env.local
+
+# === Artefactos del companion de brainstorming ===
+.superpowers/
+
+# === Documentos internos de planificacion (no publicar) ===
+docs/superpowers/
