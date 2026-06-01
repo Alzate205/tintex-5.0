@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sostenibilidad - TINTEX 5.0</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">GYH</div>
+            <div class="menu-toggle"><i class="fas fa-bars"></i></div>
+            <div class="user-profile">
+                <span id="loggedInUser"></span>
+                <a href="#" class="logout" id="logoutBtn">Cerrar sesión</a>
+            </div>
+        </header>
+        <nav class="nav">
+            <ul>
+                <li><a href="dashboard.html">Inventario</a></li>
+                <li><a href="procesos.html">Prototipos</a></li>
+                <li><a href="sostenibilidad.html" class="eco active"><i class="fas fa-leaf"></i> Sostenibilidad</a></li>
+                <li><a href="optimizador.html" class="eco"><i class="fas fa-flask"></i> Optimizador</a></li>
+                <li><a href="reportes.html">Reportes</a></li>
+                <li><a href="proveedores.html">Proveedores</a></li>
+            </ul>
+        </nav>
+        <main class="content">
+            <div class="eco-banner">
+                <div class="lf">🌿</div>
+                <div>
+                    <h2>Panel de Sostenibilidad — Control Digital de Químicos</h2>
+                    <p>Indicadores ambientales del proceso de manufactura de denim</p>
+                </div>
+            </div>
+            <div class="kpi-grid" id="kpiGrid"></div>
+            <div class="eco-card" style="display:flex;justify-content:flex-end;padding:10px 18px">
+                <a href="factores.html" class="add-btn" style="text-decoration:none"><i class="fas fa-cog"></i> Coeficientes ambientales</a>
+            </div>
+            <div class="eco-card">
+                <h4>Reabastecimiento sugerido (predicción de consumo)</h4>
+                <table class="eco-table">
+                    <thead><tr><th>Producto</th><th>Stock actual</th><th>Consumo proyectado</th><th>Confianza</th><th>Acción</th></tr></thead>
+                    <tbody id="prediccionBody"></tbody>
+                </table>
+                <p class="eco-note">Proyección por suavizado exponencial sobre el historial de salidas; mejora al acumular datos.</p>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+    <script src="sostenibilidad.js"></script>
+</body>
+</html>

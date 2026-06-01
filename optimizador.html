@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimizador - TINTEX 5.0</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">GYH</div>
+            <div class="menu-toggle"><i class="fas fa-bars"></i></div>
+            <div class="user-profile">
+                <span id="loggedInUser"></span>
+                <a href="#" class="logout" id="logoutBtn">Cerrar sesión</a>
+            </div>
+        </header>
+        <nav class="nav">
+            <ul>
+                <li><a href="dashboard.html">Inventario</a></li>
+                <li><a href="procesos.html">Prototipos</a></li>
+                <li><a href="sostenibilidad.html" class="eco"><i class="fas fa-leaf"></i> Sostenibilidad</a></li>
+                <li><a href="optimizador.html" class="eco active"><i class="fas fa-flask"></i> Optimizador</a></li>
+                <li><a href="reportes.html">Reportes</a></li>
+                <li><a href="proveedores.html">Proveedores</a></li>
+            </ul>
+        </nav>
+        <main class="content">
+            <div class="eco-banner">
+                <div class="lf">⚗️</div>
+                <div>
+                    <h2>Optimizador de Dosificación</h2>
+                    <p>Consumo real (g/kg de tela) vs. dosis óptima · detecta sobredosis y cuantifica ahorro</p>
+                </div>
+            </div>
+
+            <div class="eco-card">
+                <label for="loteSelect"><strong>Selecciona un lote:</strong></label>
+                <select id="loteSelect" style="padding:8px;border-radius:8px;margin-left:8px"></select>
+                <span id="pesoTela" style="margin-left:12px;color:#6b8a7e"></span>
+            </div>
+
+            <div class="kpi-grid" id="resultCards"></div>
+
+            <div class="eco-card">
+                <h4>Detalle por etapa</h4>
+                <table class="eco-table">
+                    <thead><tr>
+                        <th>Etapa</th><th>Químico</th><th>Real (g/kg)</th><th>Óptima (g/kg)</th>
+                        <th>Desviación</th><th>Excedente</th><th>Estado</th>
+                    </tr></thead>
+                    <tbody id="detalleBody"></tbody>
+                </table>
+                <p class="eco-note">Dosis real = cantidad usada ÷ peso de tela. Agua/CO₂ son estimaciones según coeficientes configurables.</p>
+            </div>
+
+            <div class="eco-card">
+                <h4>Acumulado global de planta</h4>
+                <canvas id="acumuladoChart" height="90"></canvas>
+                <div id="acumuladoTotales" style="margin-top:12px"></div>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+    <script src="optimizador.js"></script>
+</body>
+</html>

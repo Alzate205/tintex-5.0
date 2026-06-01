@@ -2018,6 +2018,84 @@ def api_prediccion_consumo(current_user):
         return jsonify({'error': 'No se pudo calcular la predicción'}), 500
 
 
+@app.route('/api/factores_ambientales', methods=['GET'])
+@token_required
+def api_get_factores(current_user):
+    try:
+        conn = get_db_connection()
+        rows = conn.execute("""
+            SELECT f.id_factor, f.id_producto, p.nombre AS producto,
+                   f.agua_l_por_kg, f.co2_kg_por_kg, f.carga_efluente_gdqo_por_kg,
+                   f.eco_score, f.fuente, f.es_estimacion
+            FROM factores_ambientales f
+            LEFT JOIN productos p ON p.id_producto = f.id_producto
+            ORDER BY f.id_producto
+        """).fetchall()
+        return jsonify([dict(r) for r in rows])
+    except Exception as e:
+        print(f"Error al obtener factores: {e}")
+        return jsonify({'error': 'No se pudieron obtener los coeficientes'}), 500
+
+
+@app.route('/api/factores_ambientales', methods=['POST'])
+@token_required
+def api_post_factor(current_user):
+    if current_user.get('rol') != 'Administrador':
+        return jsonify({'error': 'Solo el Administrador puede editar coeficientes'}), 403
+    data = request.get_json()
+    try:
+        conn = get_db_connection()
+        conn.execute("""
+            INSERT INTO factores_ambientales
+                (id_producto, agua_l_por_kg, co2_kg_por_kg, carga_efluente_gdqo_por_kg,
+                 eco_score, fuente, es_estimacion)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id_producto) DO UPDATE SET
+                agua_l_por_kg=excluded.agua_l_por_kg,
+                co2_kg_por_kg=excluded.co2_kg_por_kg,
+                carga_efluente_gdqo_por_kg=excluded.carga_efluente_gdqo_por_kg,
+                eco_score=excluded.eco_score,
+                fuente=excluded.fuente,
+                es_estimacion=excluded.es_estimacion
+        """, (
+            data.get('id_producto'), data.get('agua_l_por_kg', 0),
+            data.get('co2_kg_por_kg', 0), data.get('carga_efluente_gdqo_por_kg', 0),
+            data.get('eco_score', 'C'), data.get('fuente'), data.get('es_estimacion', 1),
+        ))
+        conn.commit()
+        return jsonify({'message': 'Coeficiente guardado'}), 201
+    except Exception as e:
+        print(f"Error al guardar factor: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/factores_ambientales/<int:id_producto>', methods=['PUT'])
+@token_required
+def api_put_factor(current_user, id_producto):
+    if current_user.get('rol') != 'Administrador':
+        return jsonify({'error': 'Solo el Administrador puede editar coeficientes'}), 403
+    data = request.get_json()
+    try:
+        conn = get_db_connection()
+        cur = conn.execute("""
+            UPDATE factores_ambientales
+            SET agua_l_por_kg = ?, co2_kg_por_kg = ?, carga_efluente_gdqo_por_kg = ?,
+                eco_score = ?, fuente = ?, es_estimacion = ?
+            WHERE id_producto = ?
+        """, (
+            data.get('agua_l_por_kg', 0), data.get('co2_kg_por_kg', 0),
+            data.get('carga_efluente_gdqo_por_kg', 0), data.get('eco_score', 'C'),
+            data.get('fuente'), data.get('es_estimacion', 1), id_producto,
+        ))
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({'error': 'No existe coeficiente para ese producto'}), 404
+        return jsonify({'message': 'Coeficiente actualizado'}), 200
+    except Exception as e:
+        print(f"Error al actualizar factor: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 # Iniciar el servidor Flask (esto no se ejecutará cuando PyWebView lo inicie)
 if __name__ == '__main__':
     app.run(debug=True)

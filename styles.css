@@ -1906,3 +1906,43 @@ section {
         width: 100%;
     }
 }
+
+/* ===== TINTEX 5.0 — acento verde de sostenibilidad ===== */
+.nav a.eco { color: #0b7a4f; }
+.nav a.eco.active { border-bottom: 3px solid #1f9d6b; }
+.nav a.eco i { margin-right: 5px; }
+
+.eco-banner {
+    display: flex; align-items: center; gap: 12px;
+    background: linear-gradient(135deg, #0b7a4f, #1f9d6b); color: #fff;
+    padding: 14px 20px; border-radius: 14px; margin-bottom: 18px;
+    box-shadow: 0 8px 22px rgba(11,122,79,.22);
+}
+.eco-banner .lf { width: 38px; height: 38px; border-radius: 10px;
+    background: rgba(255,255,255,.18); display: flex; align-items: center;
+    justify-content: center; font-size: 20px; }
+.eco-banner h2 { margin: 0; font-size: 1.05rem; color: #fff; }
+.eco-banner p { margin: 0; font-size: .8rem; opacity: .9; }
+
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 14px; margin-bottom: 16px; }
+.kpi-card { background: #fff; border: 1px solid #e6ecf3; border-top: 3px solid #1f9d6b;
+    border-radius: 14px; padding: 16px; box-shadow: 0 6px 18px rgba(26,46,68,.06); }
+.kpi-card h3 { font-size: .7rem; text-transform: uppercase; letter-spacing: .5px; color: #8195a9; margin: 0 0 6px; }
+.kpi-card .val { font-size: 1.5rem; font-weight: 800; color: #1a2e44; }
+.kpi-card .sub { font-size: .72rem; margin-top: 6px; color: #8195a9; }
+
+.eco-card { background: #fff; border: 1px solid #e6ecf3; border-radius: 14px;
+    padding: 18px; box-shadow: 0 6px 18px rgba(26,46,68,.06); margin-bottom: 14px; }
+.eco-card h4 { margin: 0 0 14px; font-size: .95rem; color: #1a2e44; }
+
+.badge-estado { font-size: .68rem; padding: 3px 10px; border-radius: 999px; font-weight: 600; }
+.badge-optimo { background: #e7f6ef; color: #0b7a4f; }
+.badge-sobredosis { background: #fdecea; color: #c0392b; }
+.badge-leve { background: #fff4e5; color: #9a5b00; }
+.badge-sinref { background: #eef2f7; color: #6b8a7e; }
+
+.eco-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.eco-table th { text-align: left; color: #8195a9; font-size: .68rem; text-transform: uppercase;
+    padding: 8px 10px; border-bottom: 2px solid #eef2f7; }
+.eco-table td { padding: 10px; border-bottom: 1px solid #f1f4f8; }
+.eco-note { font-size: .68rem; color: #9bb3a9; font-style: italic; margin-top: 8px; }
