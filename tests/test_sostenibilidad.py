@@ -129,3 +129,13 @@ def test_graficas_estructura_y_alertas(conn):
     assert isinstance(g["consumo_por_lote"], list) and len(g["consumo_por_lote"]) >= 1
     # con seed_demo hay sobredosis -> al menos una alerta de ese tipo
     assert any(a["tipo"] == "sobredosis" for a in g["alertas"])
+
+
+def test_huella_prototipo(conn):
+    import seed_demo
+    seed_demo.sembrar(conn)
+    # Prototipo 1 del seed: producto 1 (5.0) + producto 5 (10.0)
+    # agua = 5/1000*300 + 10/1000*80 = 1.5 + 0.8 = 2.3
+    h = s.compute_prototipo_huella(conn, 1)
+    assert h["agua_l_por_kg_tela"] == 2.3
+    assert h["co2_kg_por_kg_tela"] >= 0

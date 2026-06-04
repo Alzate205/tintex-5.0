@@ -14,7 +14,9 @@
         const lotes = await fetch(`${BASE_URL}/api/lotes`, { headers }).then(r => r.json());
         sel.innerHTML = lotes.map(l => `<option value="${l.id_lote}">${l.numero_lote}</option>`).join('');
         sel.onchange = () => cargarLote(sel.value);
-        if (lotes.length) cargarLote(lotes[0].id_lote);
+        const preset = new URLSearchParams(location.search).get('lote');
+        const inicial = (preset && lotes.some(l => String(l.id_lote) === preset)) ? preset : (lotes.length ? lotes[0].id_lote : null);
+        if (inicial) { sel.value = inicial; cargarLote(inicial); }
         cargarAcumulado();
     }
 
@@ -25,8 +27,8 @@
         const t = data.totales;
         document.getElementById('resultCards').innerHTML = `
             <div class="kpi-card"><h3>Exceso de químico</h3><div class="val">${fmt(t.excedente_kg)} kg</div></div>
-            <div class="kpi-card"><h3>Agua evitable 💧</h3><div class="val">${fmt(t.agua_evitable_l)} L</div><div class="sub">estimación</div></div>
-            <div class="kpi-card"><h3>CO₂ evitable 🌍</h3><div class="val">${fmt(t.co2_evitable_kg)} kg</div><div class="sub">estimación</div></div>
+            <div class="kpi-card"><h3>Agua evitable</h3><div class="val">${fmt(t.agua_evitable_l)} L</div><div class="sub">estimación</div></div>
+            <div class="kpi-card"><h3>CO₂ evitable</h3><div class="val">${fmt(t.co2_evitable_kg)} kg</div><div class="sub">estimación</div></div>
             <div class="kpi-card"><h3>Ahorro estimado</h3><div class="val">$${fmt(t.ahorro)}</div></div>`;
         document.getElementById('detalleBody').innerHTML = data.detalle.map(d => `
             <tr>
@@ -45,7 +47,7 @@
             const w = sobre[0];
             card.style.display = 'block';
             document.getElementById('recomendacionTexto').innerHTML =
-                `💡 <strong>${w.producto}</strong> en <strong>${w.etapa}</strong>: reduce de ` +
+                `<strong>${w.producto}</strong> en <strong>${w.etapa}</strong>: reduce de ` +
                 `<strong>${fmt(w.dosis_real_g_kg)} g/kg</strong> a <strong>${fmt(w.dosis_ref_g_kg)} g/kg</strong> ` +
                 `(desviación ${fmt(w.desviacion_pct, 1)}%).<br>Ahorro por lote: <strong>${fmt(w.excedente_kg)} kg</strong> de químico` +
                 (w.agua_evitable_l ? `, ≈${fmt(w.agua_evitable_l)} L de agua` : '') +

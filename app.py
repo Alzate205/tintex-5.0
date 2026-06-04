@@ -615,42 +615,23 @@ def protected_prototipos(current_user):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        print("Conexión a la base de datos establecida correctamente")  # Depuración
-
         if request.method == 'GET':
-            # Obtener todos los prototipos
-            print("Obteniendo todos los prototipos...")
-            cursor.execute('SELECT * FROM prototipos WHERE id_usuario = ? ORDER BY id_prototipo', (current_user['id'],))
+            cursor.execute('SELECT * FROM prototipos ORDER BY id_prototipo DESC')
             prototipos = cursor.fetchall()
-            print(f"Prototipos obtenidos: {[dict(row) for row in prototipos]}")  # Depuración
             prototipos_list = []
 
-            # Depurar el contenido de la tabla etapas
-            print("Depurando contenido de la tabla etapas...")
-            cursor.execute('SELECT * FROM etapas_prototipos')  # Ajustamos el nombre de la tabla a etapas_prototipos
-            todas_etapas = cursor.fetchall()
-            todas_etapas_list = [dict(row) for row in todas_etapas]
-            print(f"Contenido completo de la tabla etapas_prototipos: {todas_etapas_list}")
-
             for prototipo in prototipos:
-                # Obtener las etapas de cada prototipo
-                print(f"Buscando etapas para el prototipo {prototipo['id_prototipo']}")
                 cursor.execute('SELECT * FROM etapas_prototipos WHERE id_prototipo = ?', (prototipo['id_prototipo'],))
                 etapas = cursor.fetchall()
-                print(f"Etapas para prototipo {prototipo['id_prototipo']}: {[dict(row) for row in etapas]}")  # Depuración
                 etapas_list = []
                 stock_suficiente = True
                 stock_detalles = []
 
-                # Verificar stock para cada etapa
                 for etapa in etapas:
-                    print(f"Verificando stock para producto {etapa['id_producto']} en etapa {etapa['id_etapa_prototipo']}")
                     cursor.execute('SELECT id_producto, nombre, cantidad FROM productos WHERE id_producto = ?', (etapa['id_producto'],))
                     producto = cursor.fetchone()
-                    print(f"Producto {etapa['id_producto']} para etapa {etapa['id_etapa_prototipo']}: {producto}")  # Depuración
 
                     if not producto:
-                        print(f"Advertencia: Producto con ID {etapa['id_producto']} no encontrado para etapa {etapa['id_etapa_prototipo']}")
                         cantidad_disponible = 0
                     else:
                         cantidad_disponible = float(producto['cantidad'])
@@ -678,7 +659,13 @@ def protected_prototipos(current_user):
                             'cantidad_disponible': cantidad_disponible
                         })
 
-                # Agregar el prototipo a la lista
+                cursor.execute(
+                    'SELECT estado_anterior, estado_nuevo, fecha_cambio, usuario_cambio '
+                    'FROM historial_estados_prototipos WHERE id_prototipo = ? ORDER BY id_historial',
+                    (prototipo['id_prototipo'],)
+                )
+                historial = [dict(h) for h in cursor.fetchall()]
+
                 prototipos_list.append({
                     'id_prototipo': prototipo['id_prototipo'],
                     'nombre': prototipo['nombre'],
@@ -689,19 +676,18 @@ def protected_prototipos(current_user):
                     'id_usuario': prototipo['id_usuario'],
                     'etapas': etapas_list,
                     'stock_suficiente': stock_suficiente,
-                    'stock_detalles': stock_detalles
+                    'stock_detalles': stock_detalles,
+                    'historial': historial,
+                    'huella': sostenibilidad.compute_prototipo_huella(conn, prototipo['id_prototipo'])
                 })
 
-            print(f"Prototipos listos para enviar: {prototipos_list}")
             return jsonify(prototipos_list), 200
 
         elif request.method == 'POST':
             data = request.get_json()
-            print(f"Datos recibidos para crear prototipo: {data}")
 
             # Validar datos
             if not data or 'nombre' not in data or 'responsable' not in data or 'estado' not in data or 'etapas' not in data:
-                print("Error: Faltan campos requeridos en los datos")
                 return jsonify({'error': 'Nombre, responsable, estado y etapas son requeridos'}), 400
 
             nombre = data['nombre']
@@ -712,47 +698,36 @@ def protected_prototipos(current_user):
 
             # Validar etapas
             if not isinstance(etapas, list):
-                print("Error: Las etapas deben ser una lista")
                 return jsonify({'error': 'Las etapas deben ser una lista'}), 400
             if len(etapas) == 0:
-                print("Error: Se requiere al menos una etapa")
                 return jsonify({'error': 'Se requiere al menos una etapa'}), 400
 
             for etapa in etapas:
                 required_keys = ['id_proceso', 'id_producto', 'cantidad_requerida', 'tiempo', 'nombre_proceso', 'nombre_producto']
                 if not all(key in etapa for key in required_keys):
-                    print(f"Error: Faltan datos en una etapa: {etapa}")
                     return jsonify({'error': 'Faltan datos en una etapa'}), 400
                 if not isinstance(etapa['cantidad_requerida'], (int, float)) or etapa['cantidad_requerida'] <= 0:
-                    print(f"Error: Cantidad inválida en etapa: {etapa['cantidad_requerida']}")
                     return jsonify({'error': 'La cantidad debe ser mayor que 0'}), 400
                 if not isinstance(etapa['tiempo'], int) or etapa['tiempo'] <= 0:
-                    print(f"Error: Tiempo inválido en etapa: {etapa['tiempo']}")
                     return jsonify({'error': 'El tiempo debe ser un entero mayor que 0'}), 400
 
             # Verificar stock disponible
             for etapa in etapas:
-                print(f"Verificando stock para producto {etapa['id_producto']}")
                 cursor.execute('SELECT id_producto, nombre, cantidad FROM productos WHERE id_producto = ?', (etapa['id_producto'],))
                 producto = cursor.fetchone()
-                print(f"Producto encontrado: {producto}")
                 if not producto:
-                    print(f"Error: Producto con ID {etapa['id_producto']} no encontrado")
                     return jsonify({
                         'error': f"Producto con ID {etapa['id_producto']} no encontrado",
                         'nombre_enviado': etapa['nombre_producto']
                     }), 404
                 cantidad_disponible = float(producto['cantidad'])
-                print(f"Cantidad disponible para {producto['nombre']}: {cantidad_disponible}")
                 if etapa['cantidad_requerida'] > cantidad_disponible:
-                    print(f"Error: Stock insuficiente para producto {etapa['nombre_producto']} (disponible: {cantidad_disponible}, requerido: {etapa['cantidad_requerida']})")
                     return jsonify({
                         'error': f"No hay suficiente stock para el producto {etapa['nombre_producto']}",
                         'detalle': f"Disponible: {cantidad_disponible}, Requerido: {etapa['cantidad_requerida']}"
                     }), 400
 
             # Insertar prototipo
-            print("Insertando nuevo prototipo...")
             cursor.execute(
                 '''
                 INSERT INTO prototipos (nombre, responsable, notas, estado, id_usuario, fecha_creacion)
@@ -761,11 +736,9 @@ def protected_prototipos(current_user):
                 (nombre, responsable, notas, estado, current_user['id'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
             )
             id_prototipo = cursor.lastrowid
-            print(f"Prototipo creado con ID: {id_prototipo}")
 
             # Insertar etapas
             for etapa in etapas:
-                print(f"Insertando etapa: {etapa}")
                 cursor.execute(
                     '''
                     INSERT INTO etapas_prototipos (id_prototipo, id_proceso, id_producto, cantidad_requerida, tiempo, nombre_proceso, nombre_producto)
@@ -777,14 +750,12 @@ def protected_prototipos(current_user):
 
             # Descontar cantidades del inventario
             for etapa in etapas:
-                print(f"Descontando {etapa['cantidad_requerida']} unidades del producto {etapa['id_producto']}")
                 cursor.execute(
                     'UPDATE productos SET cantidad = cantidad - ? WHERE id_producto = ?',
                     (etapa['cantidad_requerida'], etapa['id_producto'])
                 )
 
             # Insertar en historial de estados
-            print("Insertando en historial de estados...")
             cursor.execute(
                 '''
                 INSERT INTO historial_estados_prototipos (id_prototipo, estado_anterior, estado_nuevo, fecha_cambio, usuario_cambio)
@@ -793,22 +764,17 @@ def protected_prototipos(current_user):
                 (id_prototipo, None, estado, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), current_user['nombre'])
             )
 
-            # Confirmar la transacción
             conn.commit()
-            print(f"Prototipo {id_prototipo} creado con éxito")
-
             return jsonify({'message': 'Prototipo creado correctamente', 'id_prototipo': id_prototipo}), 201
 
     except Exception as e:
         if conn:
             conn.rollback()
-            print("Transacción revertida debido a un error")
         print(f"Error al manejar prototipos: {type(e).__name__} - {str(e)}")
         return jsonify({'error': f"Error: {str(e)}"}), 500
     finally:
         if conn:
             conn.close()
-            print("Conexión a la base de datos cerrada")
 
 
 
@@ -1027,6 +993,83 @@ def get_prototipo(id_prototipo):
     return protected_get_prototipo(id_prototipo)
 
 # Rutas para manejar tipos de producto
+@app.route('/api/prototipos/<int:id_prototipo>', methods=['DELETE', 'OPTIONS'])
+def delete_prototipo(id_prototipo):
+    if request.method == 'OPTIONS':
+        return '', 200
+
+    @token_required
+    def _delete(current_user):
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute('SELECT id_prototipo FROM prototipos WHERE id_prototipo = ?', (id_prototipo,))
+            if not cur.fetchone():
+                return jsonify({'error': 'Prototipo no encontrado'}), 404
+            cur.execute('DELETE FROM prototipos WHERE id_prototipo = ?', (id_prototipo,))
+            conn.commit()
+            return jsonify({'message': 'Prototipo eliminado'}), 200
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            return jsonify({'error': str(e)}), 500
+    return _delete()
+
+
+@app.route('/api/prototipos/<int:id_prototipo>/estado', methods=['POST', 'OPTIONS'])
+def cambiar_estado_prototipo(id_prototipo):
+    if request.method == 'OPTIONS':
+        return '', 200
+
+    @token_required
+    def _cambiar(current_user):
+        data = request.get_json() or {}
+        nuevo = data.get('estado')
+        if nuevo not in ('En espera', 'Aprobado', 'Rechazado'):
+            return jsonify({'error': 'Estado inválido'}), 400
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute('SELECT estado FROM prototipos WHERE id_prototipo = ?', (id_prototipo,))
+            row = cur.fetchone()
+            if not row:
+                return jsonify({'error': 'Prototipo no encontrado'}), 404
+            anterior = row['estado']
+
+            cur.execute('UPDATE prototipos SET estado = ? WHERE id_prototipo = ?', (nuevo, id_prototipo))
+            cur.execute(
+                'INSERT INTO historial_estados_prototipos '
+                '(id_prototipo, estado_anterior, estado_nuevo, fecha_cambio, usuario_cambio) '
+                'VALUES (?, ?, ?, ?, ?)',
+                (id_prototipo, anterior, nuevo,
+                 datetime.now().strftime('%Y-%m-%d %H:%M:%S'), current_user['nombre'])
+            )
+
+            # Al aprobar, la receta define las dosis de referencia del optimizador (g/kg)
+            if nuevo == 'Aprobado':
+                cur.execute(
+                    'SELECT nombre_proceso, id_producto, cantidad_requerida '
+                    'FROM etapas_prototipos WHERE id_prototipo = ?', (id_prototipo,)
+                )
+                for et in cur.fetchall():
+                    conn.execute(
+                        'INSERT INTO dosis_referencia (nombre_proceso, id_producto, dosis_g_kg) '
+                        'VALUES (?, ?, ?) '
+                        'ON CONFLICT(nombre_proceso, id_producto) DO UPDATE SET dosis_g_kg = excluded.dosis_g_kg',
+                        (et['nombre_proceso'], et['id_producto'], et['cantidad_requerida'])
+                    )
+
+            conn.commit()
+            return jsonify({'message': f'Estado cambiado a {nuevo}'}), 200
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            return jsonify({'error': str(e)}), 500
+    return _cambiar()
+
+
 @app.route('/api/tipos_producto', methods=['GET'])
 @token_required
 def get_tipos_producto(current_user):
@@ -1471,84 +1514,81 @@ def handle_lotes(current_user):
     if request.method == 'OPTIONS':
         return '', 200
 
+    conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
 
         if request.method == 'GET':
-            print("Solicitud GET recibida para /api/lotes")
-            cursor.execute('SELECT * FROM lotes ORDER BY id_lote')
+            cursor.execute('SELECT * FROM lotes ORDER BY id_lote DESC')
             lotes = cursor.fetchall()
-            lotes_list = [{
-                'id_lote': row['id_lote'],
-                'numero_lote': row['numero_lote'],
-                'estado_actual': row['estado_actual']
-            } for row in lotes]
+            lotes_list = []
+            for row in lotes:
+                n = cursor.execute('SELECT COUNT(*) AS c FROM etapas_lotes WHERE id_lote = ?',
+                                   (row['id_lote'],)).fetchone()['c']
+                lotes_list.append({
+                    'id_lote': row['id_lote'],
+                    'numero_lote': row['numero_lote'],
+                    'estado_actual': row['estado_actual'],
+                    'peso_tela_kg': row['peso_tela_kg'],
+                    'fecha_inicio': row['fecha_inicio'],
+                    'num_etapas': n
+                })
             return jsonify(lotes_list)
 
         elif request.method == 'POST':
-            data = request.get_json()
+            data = request.get_json() or {}
             numero_lote = data.get('numero_lote')
-            etapas = data.get('etapas')
+            peso_tela_kg = data.get('peso_tela_kg', 0)
+            etapas = data.get('etapas', [])
 
             if not numero_lote or not etapas:
-                return jsonify({'error': 'Número de lote y etapas son requeridos'}), 400
+                return jsonify({'error': 'Número de lote y al menos una etapa son requeridos'}), 400
 
             cursor.execute('SELECT id_lote FROM lotes WHERE numero_lote = ?', (numero_lote,))
             if cursor.fetchone():
                 return jsonify({'error': 'El número de lote ya existe'}), 400
 
-            for etapa in etapas:
-                productos_requeridos = etapa.get('productos_requeridos', {})
-                for producto_nombre, cantidad in productos_requeridos.items():
-                    cursor.execute('SELECT id_producto, nombre, cantidad FROM productos WHERE nombre = ?', (producto_nombre,))
-                    producto = cursor.fetchone()
-                    if not producto:
-                        conn.rollback()
-                        return jsonify({'error': f'Producto {producto_nombre} no encontrado'}), 404
-                    if producto['cantidad'] < cantidad:
-                        conn.rollback()
-                        return jsonify({'error': f'No hay suficiente {producto_nombre} en inventario. Disponible: {producto["cantidad"]}, Requerido: {cantidad}'}), 400
-
-            cursor.execute('INSERT INTO lotes (numero_lote, estado_actual) VALUES (?, ?)', 
-                          (numero_lote, 'Iniciado'))
+            cursor.execute(
+                'INSERT INTO lotes (numero_lote, estado_actual, id_usuario, peso_tela_kg) VALUES (?, ?, ?, ?)',
+                (numero_lote, 'Iniciado', current_user['id'], peso_tela_kg)
+            )
             id_lote = cursor.lastrowid
 
-            for etapa in etapas:
-                cursor.execute("""
-                    INSERT INTO etapas_lotes (id_lote, numero_etapa, nombre_etapa, tiempo_estimado, maquina_utilizada, estado_etapa)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (id_lote, etapa['numero_etapa'], etapa['nombre_etapa'], etapa['tiempo_estimado'], 
-                      etapa['maquina_utilizada'], 'Pendiente'))
-
+            for i, etapa in enumerate(etapas, start=1):
+                cursor.execute(
+                    'INSERT INTO etapas_lotes (id_lote, numero_etapa, nombre_etapa, tiempo_estimado, '
+                    'maquina_utilizada, estado_etapa) VALUES (?, ?, ?, ?, ?, ?)',
+                    (id_lote, i, etapa.get('nombre_etapa', ''), etapa.get('tiempo_estimado', 0),
+                     etapa.get('maquina_utilizada', ''), 'Pendiente')
+                )
                 id_etapa_lote = cursor.lastrowid
-                productos_requeridos = etapa.get('productos_requeridos', {})
-                for producto_nombre, cantidad in productos_requeridos.items():
-                    cursor.execute('SELECT id_producto FROM productos WHERE nombre = ?', (producto_nombre,))
-                    producto = cursor.fetchone()
-                    if not producto:
-                        conn.rollback()
-                        return jsonify({'error': f'Producto {producto_nombre} no encontrado al insertar en etapas_productos'}), 404
-                    cursor.execute("""
-                        INSERT INTO etapas_productos (id_etapa_lote, id_producto, nombre_producto, cantidad_requerida)
-                        VALUES (?, ?, ?, ?)
-                    """, (id_etapa_lote, producto['id_producto'], producto_nombre, cantidad))
+                for prod in etapa.get('productos', []):
+                    cursor.execute('SELECT nombre FROM productos WHERE id_producto = ?', (prod.get('id_producto'),))
+                    pr = cursor.fetchone()
+                    nombre = pr['nombre'] if pr else ''
+                    cursor.execute(
+                        'INSERT INTO etapas_productos (id_etapa_lote, id_producto, nombre_producto, cantidad_usada) '
+                        'VALUES (?, ?, ?, ?)',
+                        (id_etapa_lote, prod.get('id_producto'), nombre, prod.get('cantidad_usada', 0))
+                    )
 
             conn.commit()
-            print(f"Lote {id_lote} creado con éxito")
             return jsonify({'message': 'Lote creado correctamente', 'id': id_lote}), 201
 
     except Exception as e:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         print(f"Error al manejar lotes: {e}")
         return jsonify({'error': str(e)}), 500
     finally:
-        if 'conn' in locals():
+        if conn:
             conn.close()
 
-@app.route('/api/lotes/<int:id_lote>', methods=['GET', 'PUT'])
+@app.route('/api/lotes/<int:id_lote>', methods=['GET', 'PUT', 'DELETE'])
 @token_required
-def get_lote(id_lote, current_user):
+def get_lote(current_user, id_lote):
+    conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -1561,110 +1601,89 @@ def get_lote(id_lote, current_user):
 
             cursor.execute('SELECT * FROM etapas_lotes WHERE id_lote = ? ORDER BY numero_etapa', (id_lote,))
             etapas = cursor.fetchall()
-
             etapas_list = []
             for etapa in etapas:
-                cursor.execute('SELECT nombre_producto, cantidad_requerida FROM etapas_productos WHERE id_etapa_lote = ?', (etapa['id_etapa_lote'],))
-                productos = cursor.fetchall()
-                productos_requeridos = {row['nombre_producto']: row['cantidad_requerida'] for row in productos}
-
+                cursor.execute('SELECT id_producto, nombre_producto, cantidad_usada FROM etapas_productos WHERE id_etapa_lote = ?', (etapa['id_etapa_lote'],))
+                productos = [{'id_producto': r['id_producto'], 'nombre_producto': r['nombre_producto'],
+                              'cantidad_usada': r['cantidad_usada']} for r in cursor.fetchall()]
                 etapas_list.append({
                     'id_etapa_lote': etapa['id_etapa_lote'],
                     'numero_etapa': etapa['numero_etapa'],
                     'nombre_etapa': etapa['nombre_etapa'],
-                    'tiempo_estimado': etapa['tiempo_estimado'],
-                    'tiempo_restante': etapa['tiempo_restante'],
                     'maquina_utilizada': etapa['maquina_utilizada'],
                     'estado_etapa': etapa['estado_etapa'],
-                    'productos_requeridos': productos_requeridos
+                    'productos': productos
                 })
 
             return jsonify({
                 'lote': {
                     'id_lote': lote['id_lote'],
                     'numero_lote': lote['numero_lote'],
-                    'estado_actual': lote['estado_actual']
+                    'estado_actual': lote['estado_actual'],
+                    'peso_tela_kg': lote['peso_tela_kg']
                 },
                 'etapas': etapas_list
             })
 
         elif request.method == 'PUT':
-            data = request.get_json()
+            data = request.get_json() or {}
             numero_lote = data.get('numero_lote')
-            etapas = data.get('etapas')
+            peso_tela_kg = data.get('peso_tela_kg', 0)
+            etapas = data.get('etapas', [])
 
             if not numero_lote or not etapas:
                 return jsonify({'error': 'Número de lote y etapas son requeridos'}), 400
 
-            cursor.execute('SELECT * FROM lotes WHERE id_lote = ?', (id_lote,))
+            cursor.execute('SELECT id_lote FROM lotes WHERE id_lote = ?', (id_lote,))
             if not cursor.fetchone():
                 return jsonify({'error': 'Lote no encontrado'}), 404
-
             cursor.execute('SELECT id_lote FROM lotes WHERE numero_lote = ? AND id_lote != ?', (numero_lote, id_lote))
             if cursor.fetchone():
                 return jsonify({'error': 'El número de lote ya existe'}), 400
 
-            for etapa in etapas:
-                print(f"Verificando stock para producto {etapa['id_producto']}")
-                try:
-                    cursor.execute('SELECT cantidad, nombre FROM productos WHERE id_producto = ?', (etapa['id_producto'],))
-                    producto = cursor.fetchone()
-                    print(f"Resultado de la consulta para id_producto {etapa['id_producto']}: {producto}")
-                    if not producto:
-                        print(f"Error: Producto con ID {etapa['id_producto']} no encontrado en la base de datos")
-                        return jsonify({
-                            'error': f"Producto con ID {etapa['id_producto']} no encontrado",
-                            'nombre_enviado': etapa['nombre_producto']
-                        }), 404
-                    cantidad_disponible = float(producto['cantidad'])
-                    print(f"Cantidad disponible para {producto['nombre']}: {cantidad_disponible}")
-                    if etapa['cantidad_requerida'] > cantidad_disponible:
-                        print(f"Error: Stock insuficiente para producto {etapa['nombre_producto']} (disponible: {cantidad_disponible}, requerido: {etapa['cantidad_requerida']})")
-                        return jsonify({
-                            'error': f"No hay suficiente stock para el producto {etapa['nombre_producto']}",
-                            'detalle': f"Disponible: {cantidad_disponible}, Requerido: {etapa['cantidad_requerida']}"
-                        }), 400
-
-                except Exception as e:
-                        print(f"Error inesperado al verificar stock: {type(e).__name__} - {str(e)}")
-                        return jsonify({'error': f"Error inesperado: {str(e)}"}), 500
-
-            cursor.execute('UPDATE lotes SET numero_lote = ?, estado_actual = ? WHERE id_lote = ?', 
-                          (numero_lote, 'Iniciado', id_lote))
-
-            cursor.execute('DELETE FROM etapas_lotes WHERE id_lote = ?', (id_lote,))
+            cursor.execute('UPDATE lotes SET numero_lote = ?, peso_tela_kg = ? WHERE id_lote = ?',
+                           (numero_lote, peso_tela_kg, id_lote))
             cursor.execute('DELETE FROM etapas_productos WHERE id_etapa_lote IN (SELECT id_etapa_lote FROM etapas_lotes WHERE id_lote = ?)', (id_lote,))
+            cursor.execute('DELETE FROM etapas_lotes WHERE id_lote = ?', (id_lote,))
 
-            for etapa in etapas:
-                cursor.execute("""
-                    INSERT INTO etapas_lotes (id_lote, numero_etapa, nombre_etapa, tiempo_estimado, maquina_utilizada, estado_etapa)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (id_lote, etapa['numero_etapa'], etapa['nombre_etapa'], etapa['tiempo_estimado'], 
-                      etapa['maquina_utilizada'], 'Pendiente'))
+            for i, etapa in enumerate(etapas, start=1):
+                cursor.execute(
+                    'INSERT INTO etapas_lotes (id_lote, numero_etapa, nombre_etapa, tiempo_estimado, '
+                    'maquina_utilizada, estado_etapa) VALUES (?, ?, ?, ?, ?, ?)',
+                    (id_lote, i, etapa.get('nombre_etapa', ''), etapa.get('tiempo_estimado', 0),
+                     etapa.get('maquina_utilizada', ''), 'Pendiente')
+                )
                 id_etapa_lote = cursor.lastrowid
-                productos_requeridos = etapa.get('productos_requeridos', {})
-                for producto_nombre, cantidad in productos_requeridos.items():
-                    cursor.execute('SELECT id_producto FROM productos WHERE nombre = ?', (producto_nombre,))
-                    producto = cursor.fetchone()
-                    if not producto:
-                        conn.rollback()
-                        return jsonify({'error': f'Producto {producto_nombre} no encontrado al insertar en etapas_productos'}), 404
-                    cursor.execute("""
-                        INSERT INTO etapas_productos (id_etapa_lote, id_producto, nombre_producto, cantidad_requerida)
-                        VALUES (?, ?, ?, ?)
-                    """, (id_etapa_lote, producto['id_producto'], producto_nombre, cantidad))
+                for prod in etapa.get('productos', []):
+                    cursor.execute('SELECT nombre FROM productos WHERE id_producto = ?', (prod.get('id_producto'),))
+                    pr = cursor.fetchone()
+                    nombre = pr['nombre'] if pr else ''
+                    cursor.execute(
+                        'INSERT INTO etapas_productos (id_etapa_lote, id_producto, nombre_producto, cantidad_usada) '
+                        'VALUES (?, ?, ?, ?)',
+                        (id_etapa_lote, prod.get('id_producto'), nombre, prod.get('cantidad_usada', 0))
+                    )
 
             conn.commit()
-            print(f"Lote {id_lote} actualizado con éxito")
             return jsonify({'message': 'Lote actualizado correctamente'}), 200
 
+        elif request.method == 'DELETE':
+            cursor.execute('SELECT id_lote FROM lotes WHERE id_lote = ?', (id_lote,))
+            if not cursor.fetchone():
+                return jsonify({'error': 'Lote no encontrado'}), 404
+            cursor.execute('DELETE FROM etapas_productos WHERE id_etapa_lote IN (SELECT id_etapa_lote FROM etapas_lotes WHERE id_lote = ?)', (id_lote,))
+            cursor.execute('DELETE FROM etapas_lotes WHERE id_lote = ?', (id_lote,))
+            cursor.execute('DELETE FROM lotes WHERE id_lote = ?', (id_lote,))
+            conn.commit()
+            return jsonify({'message': 'Lote eliminado'}), 200
+
     except Exception as e:
-        if 'conn' in locals():
+        if conn:
             conn.rollback()
         print(f"Error al manejar lote {id_lote}: {e}")
         return jsonify({'error': str(e)}), 500
     finally:
-        if 'conn' in locals():
+        if conn:
             conn.close()
 
 # Rutas para manejar etapas de lotes

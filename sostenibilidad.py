@@ -263,3 +263,23 @@ def compute_graficas(conn):
         "consumo_por_lote": [{"lote": r["lote"], "total": float(r["total"] or 0)} for r in por_lote],
         "alertas": compute_alertas(conn),
     }
+
+
+def compute_prototipo_huella(conn, id_prototipo):
+    """Huella ambiental estimada de la receta del prototipo, por kg de tela.
+
+    Interpreta cantidad_requerida de cada etapa como dosis en g/kg de tela.
+    """
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        "SELECT id_producto, cantidad_requerida FROM etapas_prototipos WHERE id_prototipo = ?",
+        (id_prototipo,),
+    ).fetchall()
+    agua = co2 = 0.0
+    for r in rows:
+        factor = _factor_ambiental(conn, r["id_producto"])
+        if factor is not None:
+            kg_chem_por_kg_tela = float(r["cantidad_requerida"] or 0) / 1000.0
+            agua += kg_chem_por_kg_tela * factor["agua_l_por_kg"]
+            co2 += kg_chem_por_kg_tela * factor["co2_kg_por_kg"]
+    return {"agua_l_por_kg_tela": round(agua, 3), "co2_kg_por_kg_tela": round(co2, 4)}

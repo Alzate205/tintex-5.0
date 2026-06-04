@@ -2,6 +2,7 @@
 let currentUser = null;
 let currentFilter = '';
 let searchTerm = '';
+let currentQuickFilter = 'todos';
 let editingProductId = null;
 let editingProveedorId = null;
 let editingPrototypeId = null;
@@ -296,7 +297,7 @@ function addStageRow(num, processId = '', productId = '', quantity = '', time = 
         <label>Etapa ${num}:</label>
         <select class="stage-process" required></select>
         <select class="stage-product" required></select>
-        <input type="number" class="stage-quantity" value="${quantity}" placeholder="Cantidad" step="0.01" min="0" required>
+        <input type="number" class="stage-quantity" value="${quantity}" placeholder="Dosis (g/kg)" step="0.01" min="0" required>
         <input type="number" class="stage-time" value="${time}" placeholder="Tiempo (min)" min="1" required>
         <button type="button" class="remove-stage-btn">Eliminar</button>
     `;
@@ -457,46 +458,60 @@ async function fetchAndUpdatePrototypes() {
             return;
         }
 
-        const prototypePromises = filteredPrototypes.map(async (prototype) => {
+        const badgeEstado = (estado) => {
+            const c = estado === 'Aprobado' ? 'badge-optimo' : (estado === 'Rechazado' ? 'badge-sobredosis' : 'badge-leve');
+            return `<span class="badge-estado ${c}">${sanitizeHTML(estado)}</span>`;
+        };
+
+        filteredPrototypes.forEach((prototype) => {
             const card = document.createElement('div');
-            card.className = 'inventory-item';
-            const stockStatus = prototype.stock_suficiente
-                ? '<span class="stock-ok">Stock suficiente</span>'
-                : `<span class="stock-low">Stock insuficiente</span><br>${prototype.stock_detalles.map(d => `${d.producto}: ${d.cantidad_requerida}/${d.cantidad_disponible}`).join('<br>')}`;
+            card.className = 'proto-card';
+            const h = prototype.huella || {};
+            const etapasHtml = (prototype.etapas && prototype.etapas.length)
+                ? `<ol class="proto-etapas">${prototype.etapas.map(e => {
+                        const sc = e.stock_suficiente ? 'stock-ok' : 'stock-low';
+                        return `<li><span class="pe-proc">${sanitizeHTML(e.nombre_proceso)}</span>
+                            <span class="pe-prod">${sanitizeHTML(e.nombre_producto)} · ${e.cantidad_requerida} g/kg · ${e.tiempo} min</span>
+                            <span class="pe-stock ${sc}">stock ${e.stock_disponible}</span></li>`;
+                    }).join('')}</ol>`
+                : '<p class="eco-note">Sin etapas definidas.</p>';
+            const stockBadge = prototype.stock_suficiente
+                ? '<span class="stock-ok"><i class="fas fa-check-circle"></i> Stock suficiente</span>'
+                : '<span class="stock-low"><i class="fas fa-exclamation-circle"></i> Stock insuficiente</span>';
+            const ultimo = (prototype.historial && prototype.historial.length)
+                ? `<div class="proto-hist"><i class="fas fa-history"></i> ${sanitizeHTML(prototype.historial[prototype.historial.length - 1].estado_nuevo)} · ${sanitizeHTML(prototype.historial[prototype.historial.length - 1].usuario_cambio || '')}</div>`
+                : '';
+            const accionesEstado = prototype.estado === 'En espera'
+                ? `<button class="proto-btn aprobar" data-id="${prototype.id_prototipo}"><i class="fas fa-check"></i> Aprobar</button>
+                   <button class="proto-btn rechazar" data-id="${prototype.id_prototipo}"><i class="fas fa-ban"></i> Rechazar</button>`
+                : '';
             card.innerHTML = `
-                <h3>${sanitizeHTML(prototype.nombre)}</h3>
-                <p><strong>Estado:</strong> ${sanitizeHTML(prototype.estado)}</p>
-                <p><strong>Responsable:</strong> ${sanitizeHTML(prototype.responsable)}</p>
-                <p><strong>Stock:</strong> ${stockStatus}</p>
-                <p><strong>Fecha:</strong> ${new Date(prototype.fecha_creacion).toLocaleDateString()}</p>
-                <div id="etapas-prototipo-${prototype.id_prototipo}" class="etapa-progress"></div>
-                <button class="edit-btn" data-id="${prototype.id_prototipo}">Editar</button>
+                <div class="proto-head">
+                    <h3>${sanitizeHTML(prototype.nombre)}</h3>
+                    ${badgeEstado(prototype.estado)}
+                </div>
+                <div class="proto-meta">
+                    <span><i class="fas fa-user"></i> ${sanitizeHTML(prototype.responsable || '—')}</span>
+                    <span><i class="fas fa-calendar-alt"></i> ${new Date(prototype.fecha_creacion).toLocaleDateString()}</span>
+                    ${stockBadge}
+                </div>
+                <div class="proto-huella"><i class="fas fa-tint"></i> ${h.agua_l_por_kg_tela ?? 0} L/kg · <i class="fas fa-globe-americas"></i> ${h.co2_kg_por_kg_tela ?? 0} kg CO₂/kg <em>(estimado)</em></div>
+                <h4 class="proto-sub">Receta (etapas)</h4>
+                ${etapasHtml}
+                ${ultimo}
+                <div class="proto-actions">
+                    <button class="proto-btn editar" data-id="${prototype.id_prototipo}"><i class="fas fa-edit"></i> Editar</button>
+                    ${accionesEstado}
+                    <button class="proto-btn eliminar" data-id="${prototype.id_prototipo}"><i class="fas fa-trash"></i> Eliminar</button>
+                </div>
             `;
             prototypesTable.appendChild(card);
-
-            const etapasContainer = document.getElementById(`etapas-prototipo-${prototype.id_prototipo}`);
-            etapasContainer.innerHTML = '<h4>Etapas:</h4>';
-            if (!prototype.etapas || prototype.etapas.length === 0) {
-                etapasContainer.innerHTML += '<p>No hay etapas definidas.</p>';
-            } else {
-                const etapasList = document.createElement('ul');
-                prototype.etapas.forEach((etapa, index) => {
-                    const stockClass = etapa.stock_suficiente ? 'stock-ok' : 'stock-low';
-                    const etapaItem = document.createElement('li');
-                    etapaItem.innerHTML = `
-                        Etapa ${index + 1}: ${sanitizeHTML(etapa.nombre_proceso)} (${etapa.tiempo} min)<br>
-                        ${sanitizeHTML(etapa.nombre_producto)}: ${etapa.cantidad_requerida} (Stock: <span class="${stockClass}">${etapa.stock_disponible}</span>)
-                    `;
-                    etapasList.appendChild(etapaItem);
-                });
-                etapasContainer.appendChild(etapasList);
-            }
         });
 
-        await Promise.all(prototypePromises);
-        document.querySelectorAll('.edit-btn').forEach(btn =>
-            btn.addEventListener('click', handleEditPrototype)
-        );
+        document.querySelectorAll('.proto-btn.editar').forEach(b => b.addEventListener('click', () => loadPrototypeForEdit(b.dataset.id)));
+        document.querySelectorAll('.proto-btn.aprobar').forEach(b => b.addEventListener('click', () => cambiarEstadoPrototipo(b.dataset.id, 'Aprobado')));
+        document.querySelectorAll('.proto-btn.rechazar').forEach(b => b.addEventListener('click', () => cambiarEstadoPrototipo(b.dataset.id, 'Rechazado')));
+        document.querySelectorAll('.proto-btn.eliminar').forEach(b => b.addEventListener('click', () => eliminarPrototipo(b.dataset.id)));
     } catch (error) {
         console.error('Error al cargar prototipos:', error.message);
         prototypesTable.innerHTML = `<div class="inventory-item">Error: ${sanitizeHTML(error.message)}</div>`;
@@ -566,6 +581,39 @@ function handleEditPrototype(e) {
         loadPrototypeForEdit(prototypeId);
     } else {
         console.error('ID de prototipo no encontrado en el botón de edición');
+    }
+}
+
+async function cambiarEstadoPrototipo(id, estado) {
+    if (!confirm(`¿Cambiar el estado del prototipo a "${estado}"?`)) return;
+    const token = localStorage.getItem('token');
+    try {
+        const r = await fetch(`${BASE_URL}/api/prototipos/${id}/estado`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ estado })
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'No se pudo cambiar el estado');
+        fetchAndUpdatePrototypes();
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function eliminarPrototipo(id) {
+    if (!confirm('¿Eliminar este prototipo? Esta acción no se puede deshacer.')) return;
+    const token = localStorage.getItem('token');
+    try {
+        const r = await fetch(`${BASE_URL}/api/prototipos/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'No se pudo eliminar');
+        fetchAndUpdatePrototypes();
+    } catch (err) {
+        alert('Error: ' + err.message);
     }
 }
 
@@ -1236,6 +1284,27 @@ function resetForm() {
     document.getElementById('modalTitle').textContent = 'Agregar Producto';
 }
 
+function applyQuickFilter(data, qf) {
+    const q = (it) => extractQuantity(it.quantity);
+    switch (qf) {
+        case 'bajo': return data.filter(it => q(it) < (Number(it.stock_minimo) || 0));
+        case 'sin': return data.filter(it => q(it) <= 0);
+        case 'sobre': return data.filter(it => Number(it.stock_maximo) > 0 && q(it) > Number(it.stock_maximo));
+        case 'peligrosos': return data.filter(it => it.es_toxico || it.es_corrosivo || it.es_inflamable);
+        case 'pendientes': return data.filter(it => it.estado_verificacion === 'Pendiente');
+        default: return data;
+    }
+}
+
+function updateQuickFilterCounts(data) {
+    const labels = { todos: 'Todos', bajo: 'Bajo stock', sin: 'Sin stock', sobre: 'Sobrestock', peligrosos: 'Peligrosos', pendientes: 'Pendientes' };
+    document.querySelectorAll('.qf-chip').forEach(chip => {
+        const k = chip.dataset.qf;
+        const n = applyQuickFilter(data, k).length;
+        chip.textContent = `${labels[k] || k} (${n})`;
+    });
+}
+
 function fetchAndUpdateTable() {
     if (!loading || !tableBody || !checklistBody) return;
 
@@ -1254,19 +1323,21 @@ function fetchAndUpdateTable() {
                 tableBody.innerHTML = '<div class="inventory-item">No hay productos</div>';
                 return;
             }
+            updateQuickFilterCounts(data);
             let filteredData = currentFilter ? data.filter(item => parseInt(item.type_id) === parseInt(currentFilter)) : data;
             if (searchTerm) {
                 const normalizedSearchTerm = normalizeString(searchTerm);
                 filteredData = filteredData.filter(item => normalizeString(item.product).includes(normalizedSearchTerm));
             }
+            filteredData = applyQuickFilter(filteredData, currentQuickFilter);
             if (filteredData.length === 0) {
                 tableBody.innerHTML = '<div class="inventory-item">No se encontraron productos</div>';
             } else {
                 filteredData.forEach(item => {
                     const quantityValue = extractQuantity(item.quantity);
                     const stockMaximo = item.stock_maximo || 0;
-                    const stockPercentage = stockMaximo > 0 ? (quantityValue / stockMaximo) * 100 : 0;
-                    let stockClass = stockPercentage <= 30 ? 'expire-soon' : stockPercentage <= 50 ? 'expire-warning' : 'expire-safe';
+                    const stockMinimo = Number(item.stock_minimo) || 0;
+                    let stockClass = quantityValue < stockMinimo ? 'expire-soon' : (quantityValue < stockMinimo * 1.5 ? 'expire-warning' : 'expire-safe');
 
                     const card = document.createElement('div');
                     card.className = `inventory-item ${stockClass}`;
@@ -1295,8 +1366,8 @@ function fetchAndUpdateTable() {
                         pendingProducts.forEach(item => {
                             const quantityValue = extractQuantity(item.quantity);
                             const stockMaximo = item.stock_maximo || 0;
-                            const stockPercentage = stockMaximo > 0 ? (quantityValue / stockMaximo) * 100 : 0;
-                            let stockClass = stockPercentage <= 30 ? 'expire-soon' : stockPercentage <= 50 ? 'expire-warning' : 'expire-safe';
+                            const stockMinimo = Number(item.stock_minimo) || 0;
+                            let stockClass = quantityValue < stockMinimo ? 'expire-soon' : (quantityValue < stockMinimo * 1.5 ? 'expire-warning' : 'expire-safe');
 
                             const card = document.createElement('div');
                             card.className = `inventory-item ${stockClass}`;
@@ -1579,6 +1650,15 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('closeProveedorModalBtn').onclick = () => proveedorModalOverlay.style.display = 'none';
             document.getElementById('closeTipoModalBtn').onclick = () => tipoModalOverlay.style.display = 'none';
             document.getElementById('closeFilterModalBtn').onclick = () => document.getElementById('filterModalOverlay').style.display = 'none';
+
+            document.querySelectorAll('.qf-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    currentQuickFilter = chip.dataset.qf;
+                    document.querySelectorAll('.qf-chip').forEach(c => c.classList.remove('active'));
+                    chip.classList.add('active');
+                    fetchAndUpdateTable();
+                });
+            });
         
             document.getElementById('productForm').onsubmit = async (e) => {
                 e.preventDefault();

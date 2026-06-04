@@ -12,8 +12,8 @@
             <div class="kpi-card"><h3>Químicos monitoreados</h3><div class="val">${fmt(k.total_productos,0)}</div></div>
             <div class="kpi-card"><h3>% Peligrosos</h3><div class="val">${fmt(k.pct_peligrosos,1)}%</div><div class="sub">${fmt(k.peligrosos,0)} productos</div></div>
             <div class="kpi-card"><h3>Bajo stock</h3><div class="val">${fmt(k.bajo_stock,0)}</div></div>
-            <div class="kpi-card"><h3>Agua evitada 💧</h3><div class="val">${fmt(k.agua_evitada_l,0)} L</div><div class="sub">estimación</div></div>
-            <div class="kpi-card"><h3>CO₂ evitado 🌍</h3><div class="val">${fmt(k.co2_evitado_kg,1)} kg</div><div class="sub">estimación</div></div>`;
+            <div class="kpi-card"><h3>Agua evitada</h3><div class="val">${fmt(k.agua_evitada_l,0)} L</div><div class="sub">estimación</div></div>
+            <div class="kpi-card"><h3>CO₂ evitado</h3><div class="val">${fmt(k.co2_evitado_kg,1)} kg</div><div class="sub">estimación</div></div>`;
     }
 
     async function cargarGraficas() {
@@ -48,10 +48,14 @@
             options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } }
         });
 
-        const icono = { bajo_stock: '🔴', sobredosis: '🟠', sin_coeficiente: '⚪' };
+        const icono = {
+            bajo_stock: '<i class="fas fa-exclamation-circle" style="color:#c0392b"></i>',
+            sobredosis: '<i class="fas fa-exclamation-triangle" style="color:#e67e22"></i>',
+            sin_coeficiente: '<i class="fas fa-info-circle" style="color:#8195a9"></i>'
+        };
         const box = document.getElementById('alertasBox');
         box.innerHTML = g.alertas.length
-            ? g.alertas.map(a => `<div style="padding:8px 10px;margin-bottom:6px;border-radius:8px;background:#f7faf8;font-size:.82rem">${icono[a.tipo] || '•'} ${a.mensaje}</div>`).join('')
+            ? g.alertas.map(a => `<div style="padding:8px 10px;margin-bottom:6px;border-radius:8px;background:#f7faf8;font-size:.82rem">${icono[a.tipo] || ''} ${a.mensaje}</div>`).join('')
             : '<p class="eco-note">Sin alertas activas.</p>';
     }
 

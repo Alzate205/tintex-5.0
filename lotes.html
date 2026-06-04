@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lotes / Producción - TINTEX 5.0</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">GYH</div>
+            <div class="menu-toggle"><i class="fas fa-bars"></i></div>
+            <div class="user-profile">
+                <span id="loggedInUser"></span>
+                <a href="#" class="logout" id="logoutBtn">Cerrar sesión</a>
+            </div>
+        </header>
+        <nav class="nav">
+            <ul>
+                <li><a href="dashboard.html">Inventario</a></li>
+                <li><a href="procesos.html">Prototipos</a></li>
+                <li><a href="lotes.html" class="active">Lotes</a></li>
+                <li><a href="sostenibilidad.html" class="eco"><i class="fas fa-leaf"></i> Sostenibilidad</a></li>
+                <li><a href="optimizador.html" class="eco"><i class="fas fa-flask"></i> Optimizador</a></li>
+                <li><a href="reportes.html">Reportes</a></li>
+                <li><a href="proveedores.html">Proveedores</a></li>
+            </ul>
+        </nav>
+        <main class="content">
+            <nav class="breadcrumbs">
+                <a href="lotes.html">Producción</a>
+                <span>></span>
+                <span id="currentSection">Lotes</span>
+            </nav>
+
+            <div class="controls-container">
+                <div class="search-container">
+                    <input type="text" id="searchLote" placeholder="Buscar por número de lote..." />
+                </div>
+                <div class="button-group">
+                    <button id="addLoteBtn" class="add-btn"><i class="fas fa-plus"></i> Crear Lote</button>
+                </div>
+            </div>
+
+            <div id="lotes-grid" class="inventory-grid"></div>
+        </main>
+    </div>
+
+    <!-- Modal Crear/Editar Lote -->
+    <div id="loteModalOverlay" class="modal-overlay">
+        <div class="modal">
+            <h2 id="loteModalTitle">Crear Lote</h2>
+            <form id="loteForm">
+                <input type="hidden" id="loteId">
+                <label for="loteNumero">Número de lote:</label>
+                <input type="text" id="loteNumero" placeholder="Ej. LOTE #300" required>
+
+                <label for="lotePeso">Peso de tela (kg):</label>
+                <input type="number" id="lotePeso" step="0.01" min="0" placeholder="Ej. 420" required>
+
+                <label style="margin-top:10px"><strong>Etapas del proceso</strong></label>
+                <p class="eco-note" style="margin:2px 0 8px">Cada etapa registra el consumo real de químicos. La dosis se compara contra la receta en el Optimizador.</p>
+                <div id="loteEtapas"></div>
+                <button type="button" id="addEtapaBtn" class="add-etapa-btn"><i class="fas fa-plus"></i> Agregar etapa</button>
+
+                <div class="modal-buttons" style="margin-top:14px">
+                    <button type="submit" class="submit-btn">Guardar Lote</button>
+                    <button type="button" id="closeLoteModalBtn" class="cancel-btn">Cerrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="lotes.js"></script>
+</body>
+</html>
